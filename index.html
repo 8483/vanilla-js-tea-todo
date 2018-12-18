@@ -18,7 +18,8 @@
         let model = {
             input: "",
             items: [],
-            content: null
+            contentOne: null,
+            contentTwo: null,
         };
 
         let initModel = {
@@ -29,21 +30,37 @@
                 { id: 3, task: "Get chocolate." },
                 { id: 4, task: "Get bread." },
             ],
-            content: null
+            contentOne: null,
+            contentTwo: null,
+        };
+
+        // ======================== MESSAGES ========================
+
+        const MSGS = {
+            INPUT: 'INPUT',
+            SAVE: 'SAVE',
+            DELETE: 'DELETE',
+            GET_DATA_ONE: 'GET_DATA_ONE',
+            GET_DATA_ONE_SUCCESS: 'GET_DATA_ONE_SUCCESS',
+            GET_DATA_ONE_ERROR: 'GET_DATA_ONE_ERROR',
+            GET_DATA_TWO: 'GET_DATA_TWO',
+            GET_DATA_TWO_SUCCESS: 'GET_DATA_TWO_SUCCESS',
+            GET_DATA_TWO_ERROR: 'GET_DATA_TWO_ERROR',
         };
 
         // ======================== UPDATE ========================
 
         function update(msg, model) {
             switch (msg.type) {
-                case "INPUT": {
+
+                case MSGS.INPUT: {
                     let newModel = model;
                     newModel.input = msg.payload;
                     return newModel;
                     break;
                 }
 
-                case "SAVE": {
+                case MSGS.SAVE: {
                     let newModel = model;
                     // Simulate Id incrementing.
                     let id = newModel.items.length > 0 ? lastId = newModel.items[newModel.items.length - 1].id + 1 : 1;
@@ -53,32 +70,89 @@
                     break;
                 }
 
-                case "DELETE": {
+                case MSGS.DELETE: {
                     let newModel = model;
                     newModel.items = newModel.items.filter(item => item.id != msg.payload);
                     return newModel;
                     break;
                 }
 
-                case "GET_DATA": {
+                case MSGS.GET_DATA_ONE: {
+                    // Model to be sent in app.
                     let newModel = model;
-                    newModel.content = "Loading..."
-                    let request = {}
-                    request.url = `https://jsonplaceholder.typicode.com/posts/1`
-                    return [newModel, request]
+                    newModel.contentOne = "Loading..."
+
+                    // Command, executed in the app.
+                    let command = {
+                        request: { url: `https://jsonplaceholder.typicode.com/posts/1` },
+                        successMsg: (response) => {
+                            return {
+                                type: MSGS.GET_DATA_ONE_SUCCESS,
+                                payload: response,
+                            }
+                        },
+                        errorMsg: (response) => {
+                            return {
+                                type: MSGS.GET_DATA_ONE_ERROR,
+                                payload: response,
+                            }
+                        }
+                    }
+                    // Send to app. Must be an array.
+                    return [newModel, command]
                     break;
                 }
 
-                case "HTTP_SUCCESS": {
+                case MSGS.GET_DATA_ONE_SUCCESS: {
                     let newModel = model;
-                    newModel.content = msg.payload.body;
+                    newModel.contentOne = msg.payload.body;
                     return newModel;
                     break;
                 }
 
-                case "HTTP_FAIL": {
+                case MSGS.GET_DATA_ONE_ERROR: {
                     let newModel = model;
-                    newModel.content = msg.payload.body;
+                    newModel.contentOne = msg.payload.body;
+                    return newModel;
+                    break;
+                }
+
+                case MSGS.GET_DATA_TWO: {
+                    // Model to be sent in app.
+                    let newModel = model;
+                    newModel.contentTwo = "Loading..."
+
+                    // Command, executed in the app.
+                    let command = {
+                        request: { url: `https://jsonplaceholder.typicode.com/posts/2` },
+                        successMsg: (response) => {
+                            return {
+                                type: MSGS.GET_DATA_TWO_SUCCESS,
+                                payload: response,
+                            }
+                        },
+                        errorMsg: (response) => {
+                            return {
+                                type: MSGS.GET_DATA_TWO_ERROR,
+                                payload: response,
+                            }
+                        }
+                    }
+                    // Send to app. Must be an array.
+                    return [newModel, command]
+                    break;
+                }
+
+                case MSGS.GET_DATA_TWO_SUCCESS: {
+                    let newModel = model;
+                    newModel.contentTwo = msg.payload.body;
+                    return newModel;
+                    break;
+                }
+
+                case MSGS.GET_DATA_TWO_ERROR: {
+                    let newModel = model;
+                    newModel.contentTwo = msg.payload.body;
                     return newModel;
                     break;
                 }
@@ -89,7 +163,8 @@
         // ======================== VIEW ========================
 
         function view(dispatch, model) {
-            function renderRows() {
+
+            function table() {
                 var rows = []
                 for (var i = 0; i < model.items.length; i++) {
                     var item = model.items[i]
@@ -98,7 +173,7 @@
                             attributes: { 'data-id': item.id },
                             onclick: (e) => {
                                 dispatch({
-                                    type: "DELETE",
+                                    type: MSGS.DELETE,
                                     payload: e.target.parentNode.attributes["data-id"].value
                                 })
                             }
@@ -107,42 +182,55 @@
                             ])
                     )
                 }
-                return rows
+                return h('table', [
+                    h('tbody', rows)
+                ])
             }
 
-            let tableRows = renderRows()
+            function input() {
+                return h('input', {
+                    value: model.input,
+                    onkeyup: (e) => {
+                        if (e.key == "Enter") {
+                            dispatch({
+                                type: MSGS.SAVE
+                            })
+                        } else {
+                            dispatch({
+                                type: MSGS.INPUT,
+                                payload: e.target.value
+                            })
+                        }
+                    }
+                })
+            }
 
             return h('div', [
                 h('button', {
                     onclick: () => {
                         dispatch({
-                            type: "GET_DATA"
+                            type: MSGS.GET_DATA_ONE
                         })
                     }
                 },
-                    "Get data"
+                    "Get data one"
                 ),
-                h('div', [model.content]),
+                h('div', [model.contentOne]),
                 h('br'),
-                h('input', {
-                    value: model.input,
-                    onkeyup: (e) => {
-                        if (e.key == "Enter") {
-                            dispatch({
-                                type: "SAVE"
-                            })
-                        } else {
-                            dispatch({
-                                type: "INPUT",
-                                payload: e.target.value
-                            })
-                        }
+                h('button', {
+                    onclick: () => {
+                        dispatch({
+                            type: MSGS.GET_DATA_TWO
+                        })
                     }
-                }),
+                },
+                    "Get data two"
+                ),
+                h('div', [model.contentTwo]),
+                h('br'),
+                input(),
                 h('span', [model.input]),
-                h('table', [
-                    h('tbody', tableRows)
-                ])
+                table()
             ]);
         }
 
@@ -160,16 +248,16 @@
             // Dispatch sends a message with a type and payload.
             function dispatch(msg) {
                 // Update "catches" it, updates the current model, and returns it.
-                // returns either a model or an array with model and request
+                // returns either a model or an array with model and command
                 const updates = update(msg, model);
                 // Array check boolean
                 const isArray = updates.constructor === Array;
                 // Get the model from the array. If not array, it's just the model.
                 model = isArray ? updates[0] : updates;
-                // Get the request form the array
-                const request = isArray ? updates[1] : null;
-                // Pass the dispatch function and request object for HTTP execution
-                httpEffects(dispatch, request);
+                // Get the command form the array
+                const command = isArray ? updates[1] : null;
+                // Pass the dispatch function and command object for HTTP execution
+                httpEffects(dispatch, command);
                 // Return the new view either from normal types, or HTTP ones
                 // The new view is rendered based on the returned new model.
                 const updatedView = view(dispatch, model);
@@ -181,24 +269,22 @@
                 currentView = updatedView;
             }
 
-            function httpEffects(dispatch, request) {
-                if (request === null) {
+            function httpEffects(dispatch, command) {
+                if (command === null) {
                     return;
                 }
-                // Fetch, and then send a message with the response as payload.
+                // Get the request object from the command.
+                let request = command.request;
+                // Fetch, and dispatch a success or fail message.
                 fetch(request.url, request.headers, request.body)
                     .then(res => res.json())
                     .then(result => {
-                        dispatch({
-                            type: "HTTP_SUCCESS",
-                            payload: result
-                        })
+                        // Dispatch the returned message defined in the command.
+                        dispatch(command.successMsg(result));
                     })
                     .catch(error => {
-                        dispatch({
-                            type: "HTTP_FAIL",
-                            payload: error
-                        })
+                        // Dispatch the returned message defined in the command.
+                        dispatch(command.errorMsg(error));
                     });
             }
         }
