@@ -8,14 +8,17 @@
 <body>
     <div id="app"></div>
     <script>
-        var h = require('virtual-dom/h');
-        var diff = require('virtual-dom/diff');
-        var patch = require('virtual-dom/patch');
-        var createElement = require('virtual-dom/create-element');
+        const h = require('virtual-dom/h');
+        const diff = require('virtual-dom/diff');
+        const patch = require('virtual-dom/patch');
+        const createElement = require('virtual-dom/create-element');
+
+        // ======================== MODEL ========================
 
         let model = {
             input: "",
             items: [],
+            content: null
         };
 
         let initModel = {
@@ -26,10 +29,13 @@
                 { id: 3, task: "Get chocolate." },
                 { id: 4, task: "Get bread." },
             ],
+            content: null
         };
 
+        // ======================== UPDATE ========================
+
         function update(msg, model) {
-            switch (msg.action) {
+            switch (msg.type) {
                 case "INPUT": {
                     let newModel = model;
                     newModel.input = msg.payload;
@@ -53,8 +59,34 @@
                     return newModel;
                     break;
                 }
+
+                case "GET_DATA": {
+                    let newModel = model;
+                    newModel.content = "Loading..."
+                    let request = {}
+                    request.url = `https://jsonplaceholder.typicode.com/posts/1`
+                    return [newModel, request]
+                    break;
+                }
+
+                case "HTTP_SUCCESS": {
+                    let newModel = model;
+                    newModel.content = msg.payload.body;
+                    return newModel;
+                    break;
+                }
+
+                case "HTTP_FAIL": {
+                    let newModel = model;
+                    newModel.content = msg.payload.body;
+                    return newModel;
+                    break;
+                }
+
             }
         }
+
+        // ======================== VIEW ========================
 
         function view(dispatch, model) {
             function renderRows() {
@@ -66,7 +98,7 @@
                             attributes: { 'data-id': item.id },
                             onclick: (e) => {
                                 dispatch({
-                                    action: "DELETE",
+                                    type: "DELETE",
                                     payload: e.target.parentNode.attributes["data-id"].value
                                 })
                             }
@@ -81,16 +113,27 @@
             let tableRows = renderRows()
 
             return h('div', [
+                h('button', {
+                    onclick: () => {
+                        dispatch({
+                            type: "GET_DATA"
+                        })
+                    }
+                },
+                    "Get data"
+                ),
+                h('div', [model.content]),
+                h('br'),
                 h('input', {
                     value: model.input,
                     onkeyup: (e) => {
                         if (e.key == "Enter") {
                             dispatch({
-                                action: "SAVE"
+                                type: "SAVE"
                             })
                         } else {
                             dispatch({
-                                action: "INPUT",
+                                type: "INPUT",
                                 payload: e.target.value
                             })
                         }
@@ -103,24 +146,65 @@
             ]);
         }
 
+        // ======================== APP ========================
+
         function app(initModel, update, view, node) {
+            // The initial model is set as the current model.
             let model = initModel;
+            // The new view is rendered based on the initial model.
             let currentView = view(dispatch, model);
-            console.log(currentView)
+            // The new view is created and appended to the DOM.
             let rootNode = createElement(currentView);
             node.appendChild(rootNode);
 
+            // Dispatch sends a message with a type and payload.
             function dispatch(msg) {
-                model = update(msg, model); // returns newModel
+                // Update "catches" it, updates the current model, and returns it.
+                // returns either a model or an array with model and request
+                const updates = update(msg, model);
+                // Array check boolean
+                const isArray = updates.constructor === Array;
+                // Get the model from the array. If not array, it's just the model.
+                model = isArray ? updates[0] : updates;
+                // Get the request form the array
+                const request = isArray ? updates[1] : null;
+                // Pass the dispatch function and request object for HTTP execution
+                httpEffects(dispatch, request);
+                // Return the new view either from normal types, or HTTP ones
+                // The new view is rendered based on the returned new model.
                 const updatedView = view(dispatch, model);
+                // The DOM updates are defined.
                 const patches = diff(currentView, updatedView);
+                // The DOM updates are applied.
                 rootNode = patch(rootNode, patches);
+                // The new view becomes the old view in for future dispatches.
                 currentView = updatedView;
+            }
+
+            function httpEffects(dispatch, request) {
+                if (request === null) {
+                    return;
+                }
+                // Fetch, and then send a message with the response as payload.
+                fetch(request.url, request.headers, request.body)
+                    .then(res => res.json())
+                    .then(result => {
+                        dispatch({
+                            type: "HTTP_SUCCESS",
+                            payload: result
+                        })
+                    })
+                    .catch(error => {
+                        dispatch({
+                            type: "HTTP_FAIL",
+                            payload: error
+                        })
+                    });
             }
         }
 
+        // App initializing.
         const rootNode = document.getElementById('app');
-
         app(initModel, update, view, rootNode);
 
     </script>
