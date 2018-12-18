@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Vanilla JS TEA TODO</title>
+</head>
+
+<body>
+    <div id="app"></div>
+    <script>
+        var h = require('virtual-dom/h');
+        var diff = require('virtual-dom/diff');
+        var patch = require('virtual-dom/patch');
+        var createElement = require('virtual-dom/create-element');
+
+        let model = {
+            input: "",
+            items: [],
+        };
+
+        let initModel = {
+            input: "",
+            items: [
+                { id: 1, task: "Get milk." },
+                { id: 2, task: "Get eggs." },
+                { id: 3, task: "Get chocolate." },
+                { id: 4, task: "Get bread." },
+            ],
+        };
+
+        function update(msg, model) {
+            switch (msg.action) {
+                case "INPUT": {
+                    let newModel = model;
+                    newModel.input = msg.payload;
+                    return newModel;
+                    break;
+                }
+
+                case "SAVE": {
+                    let newModel = model;
+                    // Simulate Id incrementing.
+                    let id = newModel.items.length > 0 ? lastId = newModel.items[newModel.items.length - 1].id + 1 : 1;
+                    newModel.items.push({ id: id, task: newModel.input });
+                    newModel.input = "";
+                    return newModel;
+                    break;
+                }
+
+                case "DELETE": {
+                    let newModel = model;
+                    newModel.items = newModel.items.filter(item => item.id != msg.payload);
+                    return newModel;
+                    break;
+                }
+            }
+        }
+
+        function view(dispatch, model) {
+            function renderRows() {
+                var rows = []
+                for (var i = 0; i < model.items.length; i++) {
+                    var item = model.items[i]
+                    rows.push(
+                        h('tr', {
+                            attributes: { 'data-id': item.id },
+                            onclick: (e) => {
+                                dispatch({
+                                    action: "DELETE",
+                                    payload: e.target.parentNode.attributes["data-id"].value
+                                })
+                            }
+                        }, [
+                                h('td', [item.task]),
+                            ])
+                    )
+                }
+                return rows
+            }
+
+            let tableRows = renderRows()
+
+            return h('div', [
+                h('input', {
+                    value: model.input,
+                    onkeyup: (e) => {
+                        if (e.key == "Enter") {
+                            dispatch({
+                                action: "SAVE"
+                            })
+                        } else {
+                            dispatch({
+                                action: "INPUT",
+                                payload: e.target.value
+                            })
+                        }
+                    }
+                }),
+                h('span', [model.input]),
+                h('table', [
+                    h('tbody', tableRows)
+                ])
+            ]);
+        }
+
+        function app(initModel, update, view, node) {
+            let model = initModel;
+            let currentView = view(dispatch, model);
+            console.log(currentView)
+            let rootNode = createElement(currentView);
+            node.appendChild(rootNode);
+
+            function dispatch(msg) {
+                model = update(msg, model); // returns newModel
+                const updatedView = view(dispatch, model);
+                const patches = diff(currentView, updatedView);
+                rootNode = patch(rootNode, patches);
+                currentView = updatedView;
+            }
+        }
+
+        const rootNode = document.getElementById('app');
+
+        app(initModel, update, view, rootNode);
+
+    </script>
+</body>
+
+</html>
