@@ -15,7 +15,7 @@
 
         // ======================== MODEL ========================
 
-        let initModel = {
+        const initModel = {
             input: "",
             items: [
                 { id: 1, task: "Get milk." },
@@ -26,6 +26,46 @@
             contentOne: null,
             contentTwo: null,
         };
+
+        // ======================== HTTP COMMANDS ========================
+
+        function getDataOne(model) {
+            return {
+                request: { url: `https://jsonplaceholder.typicode.com/posts/1` },
+                // If the request succeeds, dispatch a message with these parameters.
+                successMsg: (response) => {
+                    return {
+                        type: MSGS.GET_DATA_ONE_SUCCESS,
+                        payload: response,
+                    }
+                },
+                // If the request fails, dispatch a message with these parameters.
+                errorMsg: (response) => {
+                    return {
+                        type: MSGS.GET_DATA_ONE_ERROR,
+                        payload: response,
+                    }
+                }
+            }
+        }
+
+        function getDataTwo(model) {
+            return {
+                request: { url: `https://jsonplaceholder.typicode.com/posts/2` },
+                successMsg: (response) => {
+                    return {
+                        type: MSGS.GET_DATA_TWO_SUCCESS,
+                        payload: response,
+                    }
+                },
+                errorMsg: (response) => {
+                    return {
+                        type: MSGS.GET_DATA_TWO_ERROR,
+                        payload: response,
+                    }
+                }
+            }
+        }
 
         // ======================== MESSAGES ========================
 
@@ -76,21 +116,7 @@
                     newModel.contentOne = "Loading..."
 
                     // Command, executed in the app.
-                    let command = {
-                        request: { url: `https://jsonplaceholder.typicode.com/posts/1` },
-                        successMsg: (response) => {
-                            return {
-                                type: MSGS.GET_DATA_ONE_SUCCESS,
-                                payload: response,
-                            }
-                        },
-                        errorMsg: (response) => {
-                            return {
-                                type: MSGS.GET_DATA_ONE_ERROR,
-                                payload: response,
-                            }
-                        }
-                    }
+                    let command = getDataOne();
                     // Send to app. Must be an array.
                     return [newModel, command]
                     break;
@@ -116,21 +142,7 @@
                     newModel.contentTwo = "Loading..."
 
                     // Command, executed in the app.
-                    let command = {
-                        request: { url: `https://jsonplaceholder.typicode.com/posts/2` },
-                        successMsg: (response) => {
-                            return {
-                                type: MSGS.GET_DATA_TWO_SUCCESS,
-                                payload: response,
-                            }
-                        },
-                        errorMsg: (response) => {
-                            return {
-                                type: MSGS.GET_DATA_TWO_ERROR,
-                                payload: response,
-                            }
-                        }
-                    }
+                    let command = getDataTwo();
                     // Send to app. Must be an array.
                     return [newModel, command]
                     break;
