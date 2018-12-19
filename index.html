@@ -15,7 +15,7 @@
 
         // ======================== MODEL ========================
 
-        let model = {
+        let initModel = {
             input: "",
             items: [
                 { id: 1, task: "Get milk." },
@@ -284,7 +284,7 @@
 
         // App initializing.
         const rootNode = document.getElementById('app');
-        app(model, update, view, rootNode);
+        app(initModel, update, view, rootNode);
 
     </script>
 </body>
