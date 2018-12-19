@@ -16,6 +16,7 @@
         // ======================== MODEL ========================
 
         const initModel = {
+            initialData: "",
             input: "",
             items: [
                 { id: 1, task: "Get milk." },
@@ -27,7 +28,33 @@
             contentTwo: null,
         };
 
+        // Initialize the view.
+        let init = {
+            model: initModel,
+            command: getInitialData()
+        }
+
         // ======================== HTTP COMMANDS ========================
+
+        function getInitialData(model) {
+            return {
+                request: { url: `https://swapi.co/api/people/1/` },
+                // If the request succeeds, dispatch a message with these parameters.
+                successMsg: (response) => {
+                    return {
+                        type: MSGS.GET_INITIAL_DATA_SUCCESS,
+                        payload: response,
+                    }
+                },
+                // If the request fails, dispatch a message with these parameters.
+                errorMsg: (response) => {
+                    return {
+                        type: MSGS.GET_INITIAL_DATA_ERROR,
+                        payload: response,
+                    }
+                }
+            }
+        }
 
         function getDataOne(model) {
             return {
@@ -73,6 +100,8 @@
             INPUT: 'INPUT',
             SAVE: 'SAVE',
             DELETE: 'DELETE',
+            GET_INITIAL_DATA_SUCCESS: 'GET_INITIAL_DATA_SUCCESS',
+            GET_INITIAL_DATA_ERROR: 'GET_INITIAL_DATA_ERROR',
             GET_DATA_ONE: 'GET_DATA_ONE',
             GET_DATA_ONE_SUCCESS: 'GET_DATA_ONE_SUCCESS',
             GET_DATA_ONE_ERROR: 'GET_DATA_ONE_ERROR',
@@ -110,6 +139,20 @@
                     break;
                 }
 
+                case MSGS.GET_INITIAL_DATA_SUCCESS: {
+                    let newModel = model;
+                    newModel.initialData = JSON.stringify(msg.payload);
+                    return newModel;
+                    break;
+                }
+
+                case MSGS.GET_INITIAL_DATA_ERROR: {
+                    let newModel = model;
+                    newModel.initialData = msg.payload;
+                    return newModel;
+                    break;
+                }
+
                 case MSGS.GET_DATA_ONE: {
                     // Model to be sent in app.
                     let newModel = model;
@@ -131,7 +174,7 @@
 
                 case MSGS.GET_DATA_ONE_ERROR: {
                     let newModel = model;
-                    newModel.contentOne = msg.payload.body;
+                    newModel.contentOne = msg.payload;
                     return newModel;
                     break;
                 }
@@ -157,7 +200,7 @@
 
                 case MSGS.GET_DATA_TWO_ERROR: {
                     let newModel = model;
-                    newModel.contentTwo = msg.payload.body;
+                    newModel.contentTwo = msg.payload;
                     return newModel;
                     break;
                 }
@@ -211,6 +254,7 @@
             }
 
             return h('div', [
+                h('div', [model.initialData]),
                 h('button', {
                     onclick: () => {
                         dispatch({
@@ -241,9 +285,14 @@
 
         // ======================== APP ========================
 
-        function app(initModel, update, view, node) {
-            // The initial model is set as the current model.
-            let model = initModel;
+        function app(init, update, view, node) {
+            // The model is set to the initModel
+            let model = init.model;
+            // The command is the initial data from an HTTP request.
+            // If there is a command, execute the HTTP request.
+            // // Update view at future time with the response.
+            let command = init.command;
+            if (command) httpEffects(dispatch, command);
             // The new view is rendered based on the initial model.
             let currentView = view(dispatch, model);
             // The new view is created and appended to the DOM.
@@ -261,7 +310,8 @@
                 model = isArray ? updates[0] : updates;
                 // Get the command form the array
                 const command = isArray ? updates[1] : null;
-                // Pass the dispatch function and command object for HTTP execution
+                // Pass the dispatch function and command object for HTTP execution.
+                // Update view at future time with the response.
                 httpEffects(dispatch, command);
                 // Return the new view either from normal types, or HTTP ones
                 // The new view is rendered based on the returned new model.
@@ -273,30 +323,31 @@
                 // The new view becomes the old view in for future dispatches.
                 currentView = updatedView;
             }
+        }
 
-            function httpEffects(dispatch, command) {
-                if (command === null) {
-                    return;
-                }
-                // Get the request object from the command.
-                let request = command.request;
-                // Fetch, and dispatch a success or fail message.
-                fetch(request.url, request.headers, request.body)
-                    .then(res => res.json())
-                    .then(result => {
-                        // Dispatch the returned message defined in the command.
-                        dispatch(command.successMsg(result));
-                    })
-                    .catch(error => {
-                        // Dispatch the returned message defined in the command.
-                        dispatch(command.errorMsg(error));
-                    });
+        // This returns data at a future time. The app renders something else until then.
+        function httpEffects(dispatch, command) {
+            if (command === null) {
+                return;
             }
+            // Get the request object from the command.
+            let request = command.request;
+            // Fetch, and dispatch a success or fail message.
+            fetch(request.url, request.headers, request.body)
+                .then(res => res.json())
+                .then(result => {
+                    // Dispatch the returned message defined in the command.
+                    dispatch(command.successMsg(result));
+                })
+                .catch(error => {
+                    // Dispatch the returned message defined in the command.
+                    dispatch(command.errorMsg(error));
+                });
         }
 
         // App initializing.
         const rootNode = document.getElementById('app');
-        app(initModel, update, view, rootNode);
+        app(init, update, view, rootNode);
 
     </script>
 </body>
